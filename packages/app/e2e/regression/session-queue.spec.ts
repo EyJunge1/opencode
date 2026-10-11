@@ -330,7 +330,7 @@ test("keeps the draft when model selection fails and rolls back the optimistic r
 
   await view.input.fill(text)
   await view.input.press("Enter")
-  await expect(page.getByText("Failed to send prompt").first()).toBeVisible()
+  await expect(page.getByText("Failed to send prompt", { exact: true })).toBeVisible()
   await expect(view.input).toHaveText(text)
   await expect(prompt).toHaveCount(0)
   expect(mock.prompts).toEqual([])
@@ -669,6 +669,15 @@ test("Undo appends to an existing draft and restores inline attachments", async 
   await expect(view.input).toBeFocused()
   await expect(view.composer.getByRole("img", { name: "shot.png" })).toBeVisible()
   expect(mock.changes).toEqual([{ inboxID: "inb_seed_1", action: "cancel" }])
+
+  const admit = await holdRoute(page, (url) => url.pathname === `/api/session/${sessionID}/prompt`, { method: "POST" })
+  await view.input.press("Enter")
+  await admit.arrived
+  await expect(view.input).toHaveText("")
+  await expect(page.locator('[data-slot="user-message-attachment-image"]')).toBeVisible()
+  admit.release()
+  await expect.poll(() => mock.prompts.length).toBe(1)
+  await expect(page.locator('[data-slot="user-message-attachment-image"]')).toHaveCount(1)
 })
 
 test("Undo of a comment-only prompt keeps the draft text and restores the comment once", async ({ page }) => {
